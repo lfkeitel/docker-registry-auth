@@ -1,0 +1,39 @@
+[registry]
+address = "http://localhost.com:5000/v2"
+name = "localhost:5000"
+allowDelete = true
+
+[registry.auth]
+enabled = true
+key = "server.key"
+issuer = "test-issuer"
+
+[[user]]
+username = "admin"
+password = "admin"
+hash = "none"
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "**"
+    access = ["push", "pull", "delete"]
+
+[[user]]
+username = "test"
+password = "testing"
+hash = "none"
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "testing/*"
+    access = ["push", "pull"]
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "*"
+    access = ["pull"]
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "test/*"
+    access = ["push", "pull", "delete"]

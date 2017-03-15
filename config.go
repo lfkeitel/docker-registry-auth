@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"crypto/rsa"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,8 +10,7 @@ import (
 )
 
 var (
-	config  *Config
-	privKey *rsa.PrivateKey
+	config *Config
 )
 
 type Config struct {
@@ -81,23 +79,4 @@ func LoadConfig(path string) (err error) {
 	fmt.Printf("%#v\n", config)
 
 	return nil
-}
-
-func getPrivateKey() (*rsa.PrivateKey, error) {
-	if privKey != nil {
-		return privKey, nil
-	}
-
-	bytes, err := ioutil.ReadFile(config.Registry.Auth.Key)
-	if err != nil {
-		return nil, err
-	}
-
-	rsaPrivate, err := crypto.ParseRSAPrivateKeyFromPEM(bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	privKey = rsaPrivate
-	return privKey
 }

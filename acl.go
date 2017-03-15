@@ -8,6 +8,12 @@ type access struct {
 	Actions []string `json:"actions"`
 }
 
+type accessControl struct {
+	IP         string
+	Repository string
+	Actions    []string
+}
+
 func parseScope(sc string) *access {
 	parts := strings.Split(sc, ":")
 	if len(parts) < 3 || len(parts) > 4 {

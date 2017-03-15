@@ -1,0 +1,15 @@
+version: 0.1
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+
+auth:
+  token:
+    realm: http://localhost:8080/api/auth
+    service: localhost:5000
+    issuer: test-issuer
+    rootcertbundle: /certs/server.cert
+
+http:
+  addr: 0.0.0.0:5000
+  host: http://localhost:5000
