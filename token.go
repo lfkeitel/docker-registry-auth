@@ -1,4 +1,4 @@
-package auth
+package dockerauth
 
 import (
 	"crypto"
@@ -57,28 +57,33 @@ func generateToken(username string, accessClaims []*access) (string, error) {
 	}
 	payload.Jti = uuid
 
-	headerJSON, _ := json.Marshal(header)
-	payloadJSON, _ := json.Marshal(payload)
-
-	headerEncoded := make([]byte, base64.RawURLEncoding.EncodedLen(len(headerJSON)))
-	base64.RawURLEncoding.Encode(headerEncoded, headerJSON)
-	payloadEncoded := make([]byte, base64.RawURLEncoding.EncodedLen(len(payloadJSON)))
-	base64.RawURLEncoding.Encode(payloadEncoded, payloadJSON)
-
+	headerEncoded := jsonEncodeJWTSection(header)
+	payloadEncoded := jsonEncodeJWTSection(payload)
 	signature, err := signJWT(headerEncoded, payloadEncoded, key)
 	if err != nil {
 		return "", err
 	}
-	signature = base64.RawURLEncoding.EncodeToString([]byte(signature))
+	signature = base64Encode(signature)
 
 	return fmt.Sprintf("%s.%s.%s", headerEncoded, payloadEncoded, signature), nil
 }
 
-func signJWT(header, payload []byte, key *rsa.PrivateKey) (string, error) {
+func jsonEncodeJWTSection(i interface{}) []byte {
+	JSON, _ := json.Marshal(i)
+	return base64Encode(JSON)
+}
+
+func base64Encode(src []byte) []byte {
+	encoded := make([]byte, base64.RawURLEncoding.EncodedLen(len(src)))
+	base64.RawURLEncoding.Encode(encoded, src)
+	return encoded
+}
+
+func signJWT(header, payload []byte, key *rsa.PrivateKey) ([]byte, error) {
 	hasher := crypto.SHA256.New()
 	message := append(header, '.')
 	message = append(message, payload...)
 	hasher.Write(message)
 	sigBytes, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, hasher.Sum(nil))
-	return string(sigBytes), err
+	return sigBytes, err
 }

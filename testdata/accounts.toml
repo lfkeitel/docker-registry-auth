@@ -1,0 +1,29 @@
+[[user]]
+username = "admin"
+# password = admin
+password = "$6$y.gALenoXeFmmD$uK3eEevLK9eeJofA/3fYxCr6Zd6QKtSZtAscFrrLHBTXSMbU8X6kc.8oRUBJkhUdTjIt7Renv2ylYRU1GjOkr1"
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "**"
+    actions = ["push", "pull", "delete"]
+
+[[user]]
+username = "test"
+# password = testing
+password = "$6$rQg0hrgd$Ve2HTH6dPcKaZM8cZXX99W0oo.XHFEyzBG6WGH7.bs3J1MLMe5ZDgBcu3bB2P5J4O9xgIHpi0XAKKIWM4nKdg/"
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "testing/*"
+    actions = ["push", "pull"]
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "*"
+    actions = ["pull"]
+
+    [[user.permissions]]
+    ip = "*"
+    repository = "test/*"
+    actions = ["push", "pull", "delete"]

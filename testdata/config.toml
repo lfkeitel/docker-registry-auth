@@ -1,0 +1,9 @@
+[registry]
+address = "http://localhost.com:5000/v2"
+name = "localhost:5000"
+allowDelete = true
+
+[registry.auth]
+enabled = true
+key = "testdata/auth.key"
+issuer = "test-issuer"

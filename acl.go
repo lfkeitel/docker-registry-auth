@@ -1,6 +1,9 @@
-package auth
+package dockerauth
 
-import "strings"
+import (
+	"net/http"
+	"strings"
+)
 
 type access struct {
 	Type    string   `json:"type"`
@@ -8,7 +11,62 @@ type access struct {
 	Actions []string `json:"actions"`
 }
 
-type accessControl struct {
+type actionList struct {
+	pull, push, delete, catalog bool
+}
+
+func newActionList(actions []string) *actionList {
+	a := &actionList{}
+	a.addSlice(actions)
+	return a
+}
+
+func (a *actionList) add(action string) {
+	switch action {
+	case "pull":
+		a.pull = true
+	case "push":
+		a.push = true
+	case "delete":
+		a.delete = true
+	case "catalog":
+		a.catalog = true
+	}
+}
+
+func (a *actionList) addSlice(actions []string) {
+	for _, action := range actions {
+		a.add(action)
+	}
+}
+
+func (a *actionList) toSlice() []string {
+	actions := []string{}
+	if a.pull {
+		actions = append(actions, "pull")
+	}
+	if a.push {
+		actions = append(actions, "push")
+	}
+	if a.delete {
+		actions = append(actions, "delete")
+	}
+	if a.catalog {
+		actions = append(actions, "catalog")
+	}
+	return actions
+}
+
+func (a *actionList) intersect(a2 *actionList) *actionList {
+	return &actionList{
+		pull:    a.pull && a2.pull,
+		push:    a.push && a2.push,
+		delete:  a.delete && a2.delete,
+		catalog: a.catalog && a2.catalog,
+	}
+}
+
+type AccessControl struct {
 	IP         string
 	Repository string
 	Actions    []string
@@ -31,4 +89,54 @@ func parseScope(sc string) *access {
 	}
 
 	return a
+}
+
+func (a *Authenticator) filterRepository(acls []*AccessControl, repo string) []*AccessControl {
+	var newAcls []*AccessControl
+	for _, acl := range acls {
+		if globMatch(acl.Repository, repo) {
+			newAcls = append(newAcls, acl)
+		}
+	}
+
+	if newAcls == nil {
+		newAcls = make([]*AccessControl, 0)
+	}
+	return newAcls
+}
+
+func (a *Authenticator) checkIPAddress(r *http.Request, acls []*AccessControl) bool {
+	ip := r.RemoteAddr
+	if realIP := r.Header.Get(http.CanonicalHeaderKey("X-Real-IP")); realIP != "" {
+		ip = strings.SplitAfterN(realIP, ":", 2)[0]
+	}
+
+	for _, acl := range acls {
+		if !globMatch(acl.IP, ip) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *Authenticator) compareACLS(acls []*AccessControl, req *access) *access {
+	if acls == nil || len(acls) == 0 {
+		return &access{
+			Type:    req.Type,
+			Name:    req.Name,
+			Actions: []string{},
+		}
+	}
+
+	reqActions := newActionList(req.Actions)
+	allowedActions := newActionList(nil)
+	for _, acl := range acls {
+		allowedActions.addSlice(acl.Actions)
+	}
+
+	return &access{
+		Type:    req.Type,
+		Name:    req.Name,
+		Actions: allowedActions.intersect(reqActions).toSlice(),
+	}
 }

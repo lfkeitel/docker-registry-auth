@@ -1,8 +1,7 @@
-package auth
+package dockerauth
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -14,8 +13,8 @@ var (
 )
 
 type Config struct {
-	Registry *RegistryConfig
-	User     []*UserConfig
+	PrintToken bool
+	Registry   *RegistryConfig
 }
 
 type RegistryConfig struct {
@@ -29,20 +28,24 @@ type RegistryConfig struct {
 	}
 }
 
+type UserAccessConfig struct {
+	User []*UserConfig
+}
+
 type UserConfig struct {
 	Username    string
 	Password    string
 	Hash        string
-	Permissions []*UserPermissionConfig
-}
-
-type UserPermissionConfig struct {
-	IP         string
-	Repository string
-	Access     []string
+	Permissions []*AccessControl
 }
 
 func LoadConfig(path string) (err error) {
+	c, err := parseConfig(path)
+	config = c
+	return err
+}
+
+func parseConfig(path string) (c *Config, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch x := r.(type) {
@@ -62,21 +65,56 @@ func LoadConfig(path string) (err error) {
 
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
 
 	buf, err := ioutil.ReadAll(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var con Config
 	if err := toml.Unmarshal(buf, &con); err != nil {
-		return err
+		return nil, err
 	}
-	config = &con
-	fmt.Printf("%#v\n", config)
 
-	return nil
+	return &con, nil
+}
+
+func parseUserConfig(path string) (c *UserAccessConfig, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch x := r.(type) {
+			case string:
+				err = errors.New(x)
+			case error:
+				err = x
+			default:
+				err = errors.New("Unknown panic")
+			}
+		}
+	}()
+
+	if path == "" {
+		path = "config.toml"
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	buf, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	var con UserAccessConfig
+	if err := toml.Unmarshal(buf, &con); err != nil {
+		return nil, err
+	}
+
+	return &con, nil
 }
