@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"gopkg.in/hlandau/passlib.v1"
 )
 
 var (
@@ -142,7 +140,7 @@ func (a *Authenticator) GetToken(username, password string, r *http.Request) (st
 
 	// No scope, empty access
 	if scope == "" {
-		return generateToken(username, make([]*access, 0))
+		return GenerateToken(username, make([]*AccessControl, 0))
 	}
 
 	req := parseScope(scope)
@@ -154,7 +152,7 @@ func (a *Authenticator) GetToken(username, password string, r *http.Request) (st
 
 	// No actions asked, return request
 	if len(req.Actions) == 0 {
-		return generateToken(username, []*access{req})
+		return GenerateToken(username, []*AccessControl{req})
 	}
 
 	acls, err := a.accessControlStore.GetACLS(username)
@@ -165,62 +163,12 @@ func (a *Authenticator) GetToken(username, password string, r *http.Request) (st
 	acls = a.filterRepository(acls, req.Name)
 
 	if !a.checkIPAddress(r, acls) {
-		return generateToken(username, make([]*access, 0))
+		return GenerateToken(username, make([]*AccessControl, 0))
 	}
 
 	resp := a.compareACLS(acls, req)
 
 	a.log.Printf("Granting actions: %s\n", strings.Join(resp.Actions, ","))
 
-	return generateToken(username, []*access{resp})
-}
-
-type FileAuthenticator struct {
-	users map[string]*UserConfig
-}
-
-func NewFileAuthenticator(filename string) (*FileAuthenticator, error) {
-	c, err := parseUserConfig(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	users := make(map[string]*UserConfig)
-	for _, u := range c.User {
-		users[u.Username] = u
-	}
-
-	return &FileAuthenticator{
-		users: users,
-	}, nil
-}
-
-func (a *FileAuthenticator) Login(username, password string) (bool, error) {
-	user, exists := a.users[username]
-	if !exists {
-		return false, nil
-	}
-
-	return a.checkPassword(username, password, user.Password, user.Hash), nil
-}
-
-func (a *FileAuthenticator) checkPassword(username, password, expected, hash string) bool {
-	if hash == "none" {
-		fmt.Println("DON'T USE PASSWORD HASH \"none\"")
-		return password == expected
-	}
-	err := passlib.VerifyNoUpgrade(password, expected)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return err == nil
-}
-
-func (a *FileAuthenticator) GetACLS(username string) ([]*AccessControl, error) {
-	u, exists := a.users[username]
-	if !exists {
-		return nil, errors.New("User doesn't exist")
-	}
-
-	return u.Permissions, nil
+	return GenerateToken(username, []*AccessControl{resp})
 }

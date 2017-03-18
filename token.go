@@ -17,17 +17,17 @@ type jwtHeader struct {
 }
 
 type jwtPayload struct {
-	Iss    string    `json:"iss"`
-	Aud    string    `json:"aud"`
-	Sub    string    `json:"sub"`
-	Nbf    int64     `json:"nbf"`
-	Exp    int64     `json:"exp"`
-	Iat    int64     `json:"iat"`
-	Jti    string    `json:"jti"`
-	Access []*access `json:"access"`
+	Iss    string           `json:"iss"`
+	Aud    string           `json:"aud"`
+	Sub    string           `json:"sub"`
+	Nbf    int64            `json:"nbf"`
+	Exp    int64            `json:"exp"`
+	Iat    int64            `json:"iat"`
+	Jti    string           `json:"jti"`
+	Access []*AccessControl `json:"access"`
 }
 
-func generateToken(username string, accessClaims []*access) (string, error) {
+func GenerateToken(username string, accessClaims []*AccessControl) (string, error) {
 	key, err := getPrivateKey()
 	if err != nil {
 		return "", err

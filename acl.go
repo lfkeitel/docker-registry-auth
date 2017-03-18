@@ -5,14 +5,8 @@ import (
 	"strings"
 )
 
-type access struct {
-	Type    string   `json:"type"`
-	Name    string   `json:"name"`
-	Actions []string `json:"actions"`
-}
-
 type actionList struct {
-	pull, push, delete, catalog bool
+	pull, push, star bool
 }
 
 func newActionList(actions []string) *actionList {
@@ -27,10 +21,8 @@ func (a *actionList) add(action string) {
 		a.pull = true
 	case "push":
 		a.push = true
-	case "delete":
-		a.delete = true
-	case "catalog":
-		a.catalog = true
+	case "*":
+		a.star = true
 	}
 }
 
@@ -48,37 +40,34 @@ func (a *actionList) toSlice() []string {
 	if a.push {
 		actions = append(actions, "push")
 	}
-	if a.delete {
-		actions = append(actions, "delete")
-	}
-	if a.catalog {
-		actions = append(actions, "catalog")
+	if a.star {
+		actions = append(actions, "*")
 	}
 	return actions
 }
 
 func (a *actionList) intersect(a2 *actionList) *actionList {
 	return &actionList{
-		pull:    a.pull && a2.pull,
-		push:    a.push && a2.push,
-		delete:  a.delete && a2.delete,
-		catalog: a.catalog && a2.catalog,
+		pull: a.pull && a2.pull,
+		push: a.push && a2.push,
+		star: a.star && a2.star,
 	}
 }
 
 type AccessControl struct {
-	IP         string
-	Repository string
-	Actions    []string
+	IP      string   `json:"-"`
+	Type    string   `json:"type"`
+	Name    string   `json:"name"`
+	Actions []string `json:"actions"`
 }
 
-func parseScope(sc string) *access {
+func parseScope(sc string) *AccessControl {
 	parts := strings.Split(sc, ":")
 	if len(parts) < 3 || len(parts) > 4 {
 		return nil
 	}
 
-	a := &access{Type: parts[0]}
+	a := &AccessControl{Type: parts[0]}
 
 	if len(parts) == 3 {
 		a.Name = parts[1]
@@ -94,7 +83,7 @@ func parseScope(sc string) *access {
 func (a *Authenticator) filterRepository(acls []*AccessControl, repo string) []*AccessControl {
 	var newAcls []*AccessControl
 	for _, acl := range acls {
-		if globMatch(acl.Repository, repo) {
+		if globMatch(acl.Name, repo) {
 			newAcls = append(newAcls, acl)
 		}
 	}
@@ -119,9 +108,9 @@ func (a *Authenticator) checkIPAddress(r *http.Request, acls []*AccessControl) b
 	return true
 }
 
-func (a *Authenticator) compareACLS(acls []*AccessControl, req *access) *access {
+func (a *Authenticator) compareACLS(acls []*AccessControl, req *AccessControl) *AccessControl {
 	if acls == nil || len(acls) == 0 {
-		return &access{
+		return &AccessControl{
 			Type:    req.Type,
 			Name:    req.Name,
 			Actions: []string{},
@@ -134,7 +123,7 @@ func (a *Authenticator) compareACLS(acls []*AccessControl, req *access) *access 
 		allowedActions.addSlice(acl.Actions)
 	}
 
-	return &access{
+	return &AccessControl{
 		Type:    req.Type,
 		Name:    req.Name,
 		Actions: allowedActions.intersect(reqActions).toSlice(),

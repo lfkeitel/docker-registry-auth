@@ -7,7 +7,7 @@ import (
 
 var scopeTests = []struct {
 	test   string
-	access *access
+	access *AccessControl
 }{
 	{
 		test:   "repository:pull,push",
@@ -15,7 +15,7 @@ var scopeTests = []struct {
 	},
 	{
 		test: "repository:alpine:pull",
-		access: &access{
+		access: &AccessControl{
 			Type:    "repository",
 			Name:    "alpine",
 			Actions: []string{"pull"},
@@ -23,7 +23,7 @@ var scopeTests = []struct {
 	},
 	{
 		test: "repository:test/image:pull,push",
-		access: &access{
+		access: &AccessControl{
 			Type:    "repository",
 			Name:    "test/image",
 			Actions: []string{"pull", "push"},
@@ -31,7 +31,7 @@ var scopeTests = []struct {
 	},
 	{
 		test: "repository:example.com:5000/test/image:pull,push",
-		access: &access{
+		access: &AccessControl{
 			Type:    "repository",
 			Name:    "example.com:5000/test/image",
 			Actions: []string{"pull", "push"},
@@ -77,9 +77,9 @@ var actionListTests = []struct {
 		expected: []string{"pull", "push"},
 	},
 	{
-		init:     []string{"pull", "push", "delete", "catalog"},
-		equal:    &actionList{pull: true, push: true, delete: true, catalog: true},
-		expected: []string{"pull", "push", "delete", "catalog"},
+		init:     []string{"pull", "push", "*"},
+		equal:    &actionList{pull: true, push: true, star: true},
+		expected: []string{"pull", "push", "*"},
 	},
 }
 
@@ -118,8 +118,8 @@ var actionListAddTests = []struct {
 	},
 	{
 		init:     []string{"push"},
-		add:      []string{"delete", "catalog"},
-		expected: &actionList{push: true, delete: true, catalog: true},
+		add:      []string{"*"},
+		expected: &actionList{push: true, star: true},
 	},
 }
 
@@ -167,9 +167,9 @@ var actionListIntersectionTests = []struct {
 		intersect: &actionList{push: true},
 	},
 	{
-		a1:        &actionList{push: true, delete: true},
-		a2:        &actionList{pull: true, push: true, delete: true},
-		intersect: &actionList{push: true, delete: true},
+		a1:        &actionList{push: true, star: true},
+		a2:        &actionList{pull: true, push: true, star: true},
+		intersect: &actionList{push: true, star: true},
 	},
 }
 
@@ -187,52 +187,52 @@ var aclFilterTests = []struct {
 }{
 	{
 		start: []*AccessControl{
-			{Repository: "alpine"},
-			{Repository: "namespace/project"},
+			{Name: "alpine"},
+			{Name: "namespace/project"},
 		},
 		repo: "alpine",
 		expected: []*AccessControl{
-			{Repository: "alpine"},
+			{Name: "alpine"},
 		},
 	},
 	{
 		start: []*AccessControl{
-			{Repository: "alpine"},
-			{Repository: "namespace/project"},
+			{Name: "alpine"},
+			{Name: "namespace/project"},
 		},
 		repo: "namespace/project",
 		expected: []*AccessControl{
-			{Repository: "namespace/project"},
+			{Name: "namespace/project"},
 		},
 	},
 	{
 		start: []*AccessControl{
-			{Repository: "alpine"},
-			{Repository: "namespace/project"},
-			{Repository: "namespace/*"},
+			{Name: "alpine"},
+			{Name: "namespace/project"},
+			{Name: "namespace/*"},
 		},
 		repo: "namespace/project",
 		expected: []*AccessControl{
-			{Repository: "namespace/project"},
-			{Repository: "namespace/*"},
+			{Name: "namespace/project"},
+			{Name: "namespace/*"},
 		},
 	},
 	{
 		start: []*AccessControl{
-			{Repository: "alpine"},
-			{Repository: "*"},
+			{Name: "alpine"},
+			{Name: "*"},
 		},
 		repo:     "namespace/project",
 		expected: []*AccessControl{},
 	},
 	{
 		start: []*AccessControl{
-			{Repository: "alpine"},
-			{Repository: "**"},
+			{Name: "alpine"},
+			{Name: "**"},
 		},
 		repo: "namespace/project",
 		expected: []*AccessControl{
-			{Repository: "**"},
+			{Name: "**"},
 		},
 	},
 }
@@ -304,62 +304,62 @@ func TestACLIPFilterHeader(t *testing.T) {
 
 var aclCompareTests = []struct {
 	acls   []*AccessControl
-	req    *access
-	result *access
+	req    *AccessControl
+	result *AccessControl
 }{
 	{
 		acls:   nil,
-		req:    &access{Actions: []string{"push"}},
-		result: &access{Actions: []string{}},
+		req:    &AccessControl{Actions: []string{"push"}},
+		result: &AccessControl{Actions: []string{}},
 	},
 	{
 		acls:   []*AccessControl{},
-		req:    &access{Actions: []string{"push"}},
-		result: &access{Actions: []string{}},
+		req:    &AccessControl{Actions: []string{"push"}},
+		result: &AccessControl{Actions: []string{}},
 	},
 	{
 		acls: []*AccessControl{
 			&AccessControl{Actions: []string{"push"}},
 		},
-		req:    &access{Actions: []string{"push"}},
-		result: &access{Actions: []string{"push"}},
+		req:    &AccessControl{Actions: []string{"push"}},
+		result: &AccessControl{Actions: []string{"push"}},
 	},
 	{
 		acls: []*AccessControl{
 			&AccessControl{Actions: []string{"pull", "push"}},
 		},
-		req:    &access{Actions: []string{"push"}},
-		result: &access{Actions: []string{"push"}},
+		req:    &AccessControl{Actions: []string{"push"}},
+		result: &AccessControl{Actions: []string{"push"}},
 	},
 	{
 		acls: []*AccessControl{
 			&AccessControl{Actions: []string{"push"}},
 		},
-		req:    &access{Actions: []string{"pull", "push"}},
-		result: &access{Actions: []string{"push"}},
+		req:    &AccessControl{Actions: []string{"pull", "push"}},
+		result: &AccessControl{Actions: []string{"push"}},
 	},
 	{
 		acls: []*AccessControl{
 			&AccessControl{Actions: []string{"pull", "push"}},
 		},
-		req:    &access{Actions: []string{"pull", "push"}},
-		result: &access{Actions: []string{"pull", "push"}},
+		req:    &AccessControl{Actions: []string{"pull", "push"}},
+		result: &AccessControl{Actions: []string{"pull", "push"}},
 	},
 	{
 		acls: []*AccessControl{
 			&AccessControl{Actions: []string{"pull"}},
 			&AccessControl{Actions: []string{"push"}},
 		},
-		req:    &access{Actions: []string{"pull", "push"}},
-		result: &access{Actions: []string{"pull", "push"}},
+		req:    &AccessControl{Actions: []string{"pull", "push"}},
+		result: &AccessControl{Actions: []string{"pull", "push"}},
 	},
 	{
 		acls: []*AccessControl{
 			&AccessControl{Actions: []string{"pull"}},
 			&AccessControl{Actions: []string{"pull"}},
 		},
-		req:    &access{Actions: []string{"pull", "push"}},
-		result: &access{Actions: []string{"pull"}},
+		req:    &AccessControl{Actions: []string{"pull", "push"}},
+		result: &AccessControl{Actions: []string{"pull"}},
 	},
 }
 
