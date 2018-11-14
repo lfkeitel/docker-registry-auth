@@ -4,9 +4,9 @@ username = "admin"
 password = "$6$y.gALenoXeFmmD$uK3eEevLK9eeJofA/3fYxCr6Zd6QKtSZtAscFrrLHBTXSMbU8X6kc.8oRUBJkhUdTjIt7Renv2ylYRU1GjOkr1"
 
     [[user.permissions]]
-    ip = "*"
-    repository = "**"
-    actions = ["push", "pull", "delete"]
+    ip = "*" # IP address of user
+    repository = "**" # Glob to match repositories, ** matches anything for all sub-levels
+    actions = ["push", "pull", "delete"] # Actions can be: push, pull, or delete.
 
 [[user]]
 username = "test"
