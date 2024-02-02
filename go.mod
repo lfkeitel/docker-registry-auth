@@ -1,6 +1,6 @@
 module github.com/lfkeitel/docker-registry-auth
 
-go 1.21.6
+go 1.21
 
 require (
 	github.com/naoina/toml v0.1.1
